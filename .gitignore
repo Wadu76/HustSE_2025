@@ -1,0 +1,20 @@
+# 1. 虚拟环境（核心！绝对不能上传）
+venv/
+
+# 2. Python编译缓存（运行代码自动生成，无用）
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 3. 敏感配置文件（存储MySQL密码、密钥，绝对不能上传）
+.env
+
+# 4. 操作系统/IDE生成的临时文件（避免不同电脑冲突）
+.DS_Store  # Mac系统
+Thumbs.db  # Windows系统
+.idea/     # PyCharm配置
+.vscode/   # VS Code配置
+
+# 5. 数据库迁移临时文件（Flask-Migrate生成，无需上传）
+migrations/
