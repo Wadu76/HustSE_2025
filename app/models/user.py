@@ -18,7 +18,7 @@ class User(db.Model):
     grade = db.Column(db.String(20))    #年级,可选
     credit = db.Column(db.Integer, default = 100) #信用分，默认100
     create_time = db.Column(db.DateTime, default=datetime.now) #创建时间，默认为当前时间
-#now() 加了 () 会导致默认值固定为服务器启动的时间。
+    #now() 加了 () 会导致默认值固定为服务器启动的时间。
     #密码加密
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
