@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.models.book import Book
-from app.utils.auth import token_required
+from app.utils.auth import login_required
 from app import db
 
 #书籍相关蓝图
@@ -8,7 +8,7 @@ book_bp = Blueprint('book', __name__, url_prefix='/book')
 
 #1. 发布书籍（需要先登录）
 @book_bp.route('/create', methods=['POST'])
-@token_required #token_required装饰器，用于验证用户是否登录
+@login_required #token_required装饰器，用于验证用户是否登录
 def create_book(current_user): #or to say, publish a book
     data = request.get_json()
     required_fields = ['title', 'course_tag', 'condition', 'price']
@@ -22,8 +22,8 @@ def create_book(current_user): #or to say, publish a book
         title=data['title'],
         author=data.get('author', ''),
         course_tag=data['course_tag'],
-        major_tag=data.get('major_tag', ''),
-        grade_tag=data.get('grade_tag', ''),
+        #major_tag=data.get('major_tag', ''),
+        #grade_tag=data.get('grade_tag', ''),
         condition=data['condition'],
         price=data['price'],
         description=data.get('description', ''),

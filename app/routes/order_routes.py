@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.models.order import Order
 from app.models.book import Book  # 导入书籍模型，用于校验书籍状态
-from app.utils.auth import token_required  # 导入登录验证装饰器
+from app.utils.auth import login_required  # 导入登录验证装饰器
 from app import db
 import random
 from datetime import datetime
@@ -12,7 +12,7 @@ order_bp = Blueprint('order', __name__, url_prefix='/order')
 
 #1. 创建订单（买家操作，需登录）
 @order_bp.route('/create', methods=['POST'])
-@token_required  #验证登录，current_user为当前登录用户（买家）
+@login_required #验证登录，current_user为当前登录用户（买家）
 def create_order(current_user):
     data = request.get_json()
     #校验必要参数：必须传入书籍ID
@@ -62,7 +62,7 @@ def create_order(current_user):
 
 #2. 查询个人订单列表（区分买家/卖家视角，需登录）
 @order_bp.route('/list', methods=['GET'])
-@token_required
+@login_required
 def get_order_list(current_user):
     #通过query参数区分视角：role=buyer（买家）或role=seller（卖家），默认买家
     role = request.args.get('role', 'buyer')
@@ -87,7 +87,7 @@ def get_order_list(current_user):
 
 #3. 更新订单状态（如支付、发货、确认收货等，需权限校验）
 @order_bp.route('/<int:order_id>/update', methods=['POST'])
-@token_required
+@login_required
 def update_order_status(current_user, order_id):
     data = request.get_json()
     #校验必要参数：必须传入新状态

@@ -11,7 +11,9 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)    #主键ID
     phone = db.Column(db.String(11), unique=True) #手机号,唯一不重复
     #password = db.Column(db.String(100)) #密码
-    password_hash = db.Column(db.String(128), nullable=False) #加密后的密码，不能为空
+    #password_hash = db.Column(db.String(128), nullable=False) #加密后的密码，不能为空
+    password_hash = db.Column(db.String(256), nullable=False) #加密后的密码，不能为空
+    #增加为256，留足冗余，因为生成的哈希值会超过128
     username = db.Column(db.String(50)) #用户名
     identity = db.Column(db.String(20), default='buyer') #用户身份，默认为买家
     major = db.Column(db.String(20))    #专业,可选

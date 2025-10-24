@@ -10,7 +10,7 @@ class Order(db.Model):
     seller_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)    #卖家id 关联用户表,用户可以是买家也可以是卖家
     book_id = db.Column(db.Integer, db.ForeignKey('books.id'), nullable=False)    #书籍id 关联书籍表
     price = db.Column(db.Float, nullable=False)    #交易价格
-    status = db.Column(db.SmallInteger, nullable=False)     #订单状态：1-待支付，2-已支付，3-已发货，4-已收货，5-已完成
+    status = db.Column(db.SmallInteger, nullable=False,default=1)     #订单状态：1-待支付，2-已支付，3-已发货，4-已收货，5-已完成
     create_time = db.Column(db.DateTime, default=datetime.now)  #订单创建时间
 
     #关联关系，方便查询
@@ -34,6 +34,8 @@ class Order(db.Model):
             'book_title': self.book.title,         #关联查询书籍标题
             'price': self.price,
             'status': self.status,
+            #'status': 1,
+            #设置默认值1，只有订单开始的时候才会有这个默认值，因此直接设为1就好了。
             #状态文本
             'status_text': self.get_status_text(),
             'create_time': self.create_time.strftime('%Y-%m-%d %H:%M')

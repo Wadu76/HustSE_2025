@@ -1,4 +1,4 @@
-#JWT 用于身份验证
+'''#JWT 用于身份验证
 from flask import current_app
 import jwt
 from datetime import datetime, timedelta
@@ -24,6 +24,7 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
+        auth_header = request.headers.get('Authorization')
         #从请求头获取token（格式：Authorization: Bearer <token>）
         auth_header = request.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
@@ -50,5 +51,31 @@ def token_required(f):
         
         #将当前用户传递给被装饰的函数
         current_user = User.query.get(current_user_id)
+        return f(current_user, *args, **kwargs)
+    return decorated'''
+#app/utils/auth.py（全新内容）
+from flask import session, jsonify, request
+from functools import wraps
+from app.models.user import User
+
+#登录成功后，将用户ID存入session
+def set_login_session(user_id):
+    session['user_id'] = user_id  # 简单存储用户ID，视为“登录状态”
+
+#验证是否登录（装饰器）
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        #从session中获取用户ID，没有则视为未登录
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'code': 401, 'msg': '请先登录'}), 401
+        
+        #检查用户是否存在
+        current_user = User.query.get(user_id)
+        if not current_user:
+            return jsonify({'code': 401, 'msg': '用户不存在'}), 401
+        
+        #将当前用户传给接口函数
         return f(current_user, *args, **kwargs)
     return decorated

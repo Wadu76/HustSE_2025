@@ -10,3 +10,7 @@ class Config:
 
     #查询得知开发阶段不需要SQLAlchemy跟踪修改功能，避免额外内存消耗
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    #设置密钥，用于session加密
+    SECRET_KEY = 'test123' #示例字符串
+    

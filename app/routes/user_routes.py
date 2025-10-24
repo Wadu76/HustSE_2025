@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify
 from app.models import User
 from app import db
-from app.utils.auth import generate_token #导入jwt生成工具
-
+#from app.utils.auth import generate_token #导入jwt生成工具
+from app.utils.auth import set_login_session
+from werkzeug.security import generate_password_hash, check_password_hash 
 #创建用户路由的蓝图 /user
 user_bp = Blueprint('user', __name__, url_prefix='/user')
 
@@ -54,29 +55,26 @@ def register():
 @user_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    #登录必要参数校验
-    if not all (k in data for k in ('phone', 'password')):  
-        #若是用户名也是必填且唯一的话就可以加进来，但是用的是手机号注册那就只用手机号罢了
-        return jsonify({'code': 400, 'msg': '缺少参数,请检查'})
+    phone = data.get('phone')
+    password = data.get('password')
     
-    #查询登陆的用户
-    user = User.query.filter_by(phone=data['phone']).first()
-    if not user or not user.check_password(data['password']):
-        return jsonify({'code': 400, 'msg': '用户名(手机号)或密码错误'})
-
-    #生成jwt令牌
-    token = generate_token(user.id)
+    # 查询用户
+    user = User.query.filter_by(phone=phone).first()
+    if not user or not check_password_hash(user.password_hash, password):
+        return jsonify({'code': 400, 'msg': '手机号或密码错误'}), 400
+    
+    # 登录成功：将用户ID存入session（替代JWT）
+    set_login_session(user.id)
+    
+    # 返回用户信息（不需要token了）
     return jsonify({
         'code': 200,
         'msg': '登录成功',
         'data': {
-            'token': token,
-            'user':{
+            'user': {
                 'id': user.id,
                 'username': user.username,
-                'phone': user.phone,
-                'identity': user.identity,
-                'credit': user.credit
+                'phone': user.phone
             }
         }
     }), 200

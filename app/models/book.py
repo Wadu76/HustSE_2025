@@ -22,21 +22,19 @@ class Book(db.Model):
      #关联卖家（反向引用：User.books -> 该用户发布的所有书籍）
     seller = db.relationship('User', backref=db.backref('books', lazy=True))\
     
-def to_dict(self):
-        """将模型转换为字典，用于接口返回"""
+    def to_dict(self):
+        # 状态文本映射（将数字状态转换为中文描述，前端更易读）
+        status_map = {1: '在售', 0: '已售'}
         return {
             'id': self.id,
             'title': self.title,
             'author': self.author,
             'course_tag': self.course_tag,
-            'major_tag': self.major_tag,
-            'grade_tag': self.grade_tag,
             'condition': self.condition,
             'price': self.price,
-            'description': self.description,
-            'images': self.images.split(',') if self.images else [],
             'seller_id': self.seller_id,
-            'seller_name': self.seller.username,  #关联查询卖家用户名
-            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M'),
-            'status': self.status
+            'description': self.description,
+            'status': self.status,
+            'status_text': status_map.get(self.status, '未知'),  # 显示中文状态
+            'create_time': self.create_time.strftime('%Y-%m-%d %H:%M:%S')  # 格式化时间
         }
