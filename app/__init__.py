@@ -19,12 +19,18 @@ def create_app(config_class=Config):
 
     #导入User模型
     from app.models.user import User
+    #导入Book模型
+    from app.models.book import Book
+    #导入Order模型
+    from app.models.order import Order
 
     #注册路由蓝图
     from app.routes.user_routes import user_bp
     from app.routes.book_routes import book_bp
+    from app.routes.order_routes import order_bp
     app.register_blueprint(user_bp) 
     app.register_blueprint(book_bp)
+    app.register_blueprint(order_bp)
    
     #设置路由
     @app.route('/')
