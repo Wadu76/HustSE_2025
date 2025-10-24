@@ -7,11 +7,11 @@ from app.config import Config
 db = SQLAlchemy()
 #初始化迁移对象，全局可用,用于同步模型到数据库表
 migrate = Migrate()
-def create_app():
+def create_app(config_class=Config):
     app = Flask(__name__)   #Flask实例
 
     #加载config
-    app.config.from_object(Config)
+    app.config.from_object(config_class)
 
     #初始化数据库
     db.init_app(app)
@@ -19,6 +19,13 @@ def create_app():
 
     #导入User模型
     from app.models.user import User
+
+    #注册路由蓝图
+    from app.routes.user_routes import user_bp
+    from app.routes.book_routes import book_bp
+    app.register_blueprint(user_bp) 
+    app.register_blueprint(book_bp)
+   
     #设置路由
     @app.route('/')
     def index():

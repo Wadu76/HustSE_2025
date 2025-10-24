@@ -15,8 +15,8 @@ class Book(db.Model):
     price = db.Column(db.Float, nullable=False)   #价格,不能为空
     description = db.Column(db.Text)    #描述,可为空
     images = db.Column(db.String(500))    #图片URL,多个图片用逗号分隔即可
-    seller_id = db.Column(db.Integer, db.Foreignkey('users.id'), nullable=False)    #卖家id
-    create_time = db.Column(db.Datetime, default=datetime.utcnow)    #发布时间
+    seller_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)    #卖家id
+    create_time = db.Column(db.DateTime, default=datetime.utcnow)    #发布时间
     status = db.Column(db.Boolean, default=True)    #是否售出，1：在售 0：已售出
 
      #关联卖家（反向引用：User.books -> 该用户发布的所有书籍）

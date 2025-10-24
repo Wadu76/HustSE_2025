@@ -1,4 +1,5 @@
 #JWT 用于身份验证
+from flask import current_app
 import jwt
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
@@ -48,5 +49,6 @@ def token_required(f):
             return jsonify({'code': 401, 'msg': '无效的token'}), 401
         
         #将当前用户传递给被装饰的函数
+        current_user = User.query.get(current_user_id)
         return f(current_user, *args, **kwargs)
     return decorated
