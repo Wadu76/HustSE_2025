@@ -84,6 +84,27 @@ def get_order_list(current_user):
         }
     }), 200
 
+#4. 查询订单详情（需登录，且只能查看自己的订单）
+@order_bp.route('/<int:order_id>', methods=['GET'])     #GET /order/1 会查询ID为1的订单
+@login_required         #登陆验证装饰器，先检查session中有没有userid
+def get_order_detail(current_user, order_id):
+    #1. 按主键ID查询订单
+    order = Order.query.get(order_id) 
+
+    #2. 校验订单是否存在
+    if not order:
+        return jsonify({'code': 404, 'msg': '订单不存在'}), 404
+    
+    #3. 校验当前登录用户是否是该订单的买家 or 卖家
+    if order.buyer_id != current_user.id:
+        #若不是则禁止访问
+        return jsonify({'code': 403, 'msg': '无权访问该订单详情'}), 403
+        
+    #4. 上述校验通过后，返回如下详情：
+    return jsonify({
+        'code': 200, 
+        'data': order.to_dict()
+    }), 200
 
 #3. 更新订单状态（如支付、发货、确认收货等，需权限校验）
 @order_bp.route('/<int:order_id>/update', methods=['POST'])

@@ -30,3 +30,9 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
         #check_password_hash():检查密码是否正确
+
+    def to_dict(self):
+        #返回用户信息字典
+        return {
+            
+        }
