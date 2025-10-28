@@ -2,6 +2,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from app.config import Config
+from flask_cors import CORS
 
 #初始化数据库对象，全局可用
 db = SQLAlchemy()
@@ -12,7 +13,7 @@ def create_app(config_class=Config):
 
     #加载config
     app.config.from_object(config_class)
-
+    CORS(app, supports_credentials=True, origins=["http://localhost:5173"]) #允许跨域请求
     #初始化数据库
     db.init_app(app)
     migrate.init_app(app,db)
