@@ -4,6 +4,7 @@ from app import db
 #from app.utils.auth import generate_token #导入jwt生成工具
 from app.utils.auth import set_login_session
 from werkzeug.security import generate_password_hash, check_password_hash 
+from app.utils.auth import login_required
 #创建用户路由的蓝图 /user
 user_bp = Blueprint('user', __name__, url_prefix='/user')
 
@@ -77,4 +78,17 @@ def login():
                 'phone': user.phone
             }
         }
+    }), 200
+
+#3. 获取当前用户的信息（需要登录）
+@user_bp.route('/info', methods=['GET'])
+@login_required
+def get_user_info(current_user):
+    #current_user' 对象是由 @login_required 装饰器
+    #自动从 session 中获取用户ID 并查询数据库后得到的
+
+    return jsonify({
+        'code': 200,
+        'msg': '获取用户信息成功',
+        'data': current_user.to_dict()
     }), 200

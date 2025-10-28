@@ -34,5 +34,11 @@ class User(db.Model):
     def to_dict(self):
         #返回用户信息字典
         return {
-            
+            'id': self.id, 
+            'phone': self.phone,
+            'usernme': self.identity,
+            'major': self.major,
+            'grade': self.grade,
+            'credit': self.credit,
+            'create_time': self.create_time.strftime('%Y-%m-%d %H:%M:%S')
         }
