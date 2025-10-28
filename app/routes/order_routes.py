@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.models.order import Order
 from app.models.book import Book  # 导入书籍模型，用于校验书籍状态
+from app.models.user import User  # 导入用户模型，用于校验用户状态
 from app.utils.auth import login_required  # 导入登录验证装饰器
 from app import db
 import random
@@ -155,9 +156,25 @@ def update_order_status(current_user, order_id):
         return jsonify({'code': 400, 'msg': f'不支持从{order.get_status_text()}转为{Order(status=new_status).get_status_text()}'}), 400
     
     #4. 更新订单状态
-    order.status = new_status
     try:
-        db.session.commit()
+        #A. 更新订单状态
+        order.status = new_status
+        
+        #B. 新添加的信用分逻辑
+        #查询卖家
+        seller = User.query.get(order.seller_id)
+        
+        if seller: #确保卖家存在
+            if new_status == 3:
+                #状态 3: 已发货 (等待交付) -> 扣减卖家30信用分
+                seller.credit -= 30
+            elif new_status == 4:
+                #状态 4: 已收货 (订单完成) -> 返还卖家30信用分
+                seller.credit += 30
+        
+        #C. 提交数据库
+        db.session.commit() #commit会同时保存 order 和 seller 的改动
+        
         return jsonify({
             'code': 200,
             'msg': '订单状态更新成功',
