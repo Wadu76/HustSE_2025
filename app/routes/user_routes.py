@@ -92,3 +92,38 @@ def get_user_info(current_user):
         'msg': '获取用户信息成功',
         'data': current_user.to_dict()
     }), 200
+
+#4. 更新当前用户信息（需要登录）
+@user_bp.route('/info', methods=['PUT'])
+@login_required
+def update_user_info(current_user):
+    data = request.get_json()
+    if not data:
+        return jsonify({'code': 400, 'msg': '缺少数据'}), 400
+    
+    #1. 检查用户名（如果要改用户名）
+    new_username = data.get('username')
+    if new_username and new_username != current_user.username:
+        # 检查用户名是否已存在
+        if User.query.filter_by(username=new_username).first():
+            return jsonify({'code': 400, 'msg': '用户名已存在'}), 400
+        current_user.username = new_username
+
+    #2. 更新其他可选字段（以防万一）
+    if 'major' in data:
+        current_user.major = data.get('major')
+    
+    if 'grade' in data:
+        current_user.grade = data.get('grade')
+    
+    #3. 提交数据库
+    try:
+        db.session.commit()
+        return jsonify({
+            'code': 200,
+            'msg': '用户信息更新成功',
+            'data': current_user.to_dict() #返回更新后的用户信息
+        }), 200
+    except Exception as e:
+        db.session.rollback() #出错时回滚
+        return jsonify({'code': 500, 'msg': f'更新失败：{str(e)}'}), 500
