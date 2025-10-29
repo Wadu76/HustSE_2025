@@ -1,116 +1,144 @@
 <template>
-  <div class="register-container">
-    <h2>注册新用户</h2>
+  <el-card class="register-card" header="注册新用户">
     
-    <div class="form-group">
-      <label for="phone">手机号:</label>
-      <input id="phone" v-model="phone" type="text" placeholder="请输入手机号" />
-    </div>
-    
-    <div class="form-group">
-      <label for="username">用户名:</label>
-      <input id="username" v-model="username" type="text" placeholder="请输入用户名" />
-    </div>
+    <el-form 
+      :model="registerForm" 
+      :rules="rules"
+      ref="registerFormRef"
+      label-width="80px"
+    >
+      
+      <el-form-item label="手机号:" prop="phone">
+        <el-input v-model="registerForm.phone" placeholder="请输入手机号" />
+      </el-form-item>
+      
+      <el-form-item label="用户名:" prop="username">
+        <el-input v-model="registerForm.username" placeholder="请输入用户名" />
+      </el-form-item>
+      
+      <el-form-item label="密码:" prop="password">
+        <el-input 
+          v-model="registerForm.password" 
+          type="password" 
+          placeholder="请输入密码" 
+          show-password 
+        />
+      </el-form-item>
+      
+      <el-form-item label="确认密码:" prop="confirmPassword">
+        <el-input 
+          v-model="registerForm.confirmPassword" 
+          type="password" 
+          placeholder="请再次输入密码"
+          show-password 
+        />
+      </el-form-item>
 
-    <div class="form-group">
-      <label for="password">密码:</label>
-      <input id="password" v-model="password" type="password" placeholder="请输入密码" />
-    </div>
-    
-    <button @click="handleRegister">注册</button>
-    
-    <p v-if="message" class="message">{{ message }}</p>
-  </div>
+      <el-form-item>
+        <el-button 
+          type="primary" 
+          @click="handleRegister" 
+          :loading="loading"
+          style="width: 100%;"
+        >
+          立即注册
+        </el-button>
+      </el-form-item>
+
+      <el-form-item>
+        <el-button text @click="router.push('/login')" style="width: 100%;">
+          已有账户？去登录
+        </el-button>
+      </el-form-item>
+      
+    </el-form>
+  </el-card>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import apiClient from '../api/api.js';
-
-const phone = ref('');
-const username = ref('');
-const password = ref('');
-const message = ref('');
+import { ElMessage } from 'element-plus'; // 导入消息提示
 
 const router = useRouter();
+const loading = ref(false);
+const registerFormRef = ref(); // 表单的引用
 
+// 1. 【修改】使用 reactive 定义表单数据
+const registerForm = reactive({
+  phone: '',
+  username: '',
+  password: '',
+  confirmPassword: ''
+});
+
+// 2. 【新增】表单验证规则
+const validatePassConfirm = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请再次输入密码'));
+  } else if (value !== registerForm.password) {
+    callback(new Error("两次输入的密码不一致!"));
+  } else {
+    callback();
+  }
+};
+
+const rules = reactive({
+  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  confirmPassword: [{ required: true, validator: validatePassConfirm, trigger: 'blur' }]
+});
+
+
+// 3. 【修改】注册函数
 async function handleRegister() {
-  // 1. 前端基本校验
-  if (!phone.value || !password.value || !username.value) {
-    message.value = '手机号、用户名和密码均不能为空';
-    return;
-  }
-  message.value = '注册中...'; 
-  
-  try {
-    // 2. 调用后端 /user/register 接口
-    const response = await apiClient.post('/user/register', {
-      phone: phone.value,
-      username: username.value,
-      password: password.value
-    });
-    
-    // 3. 处理成功响应
-    message.value = `${response.data.msg}！即将跳转到登录页面...`; // "注册成功"
-    
-    // 4. 注册成功后，自动跳转到登录页
-    setTimeout(() => {
-      router.push('/login'); // 跳转到登录
-    }, 1500); // 延迟 1.5 秒，让用户看到成功提示
-    
-  } catch (error) {
-    // 5. 处理错误响应
-    if (error.response) {
-      // 显示后端返回的错误，例如 "手机号已被注册"
-      message.value = error.response.data.msg;
-    } else {
-      message.value = '注册失败，请检查网络或联系管理员';
+  if (!registerFormRef.value) return; // 检查表单引用是否存在
+
+  // 3.1 【新增】表单验证
+  await registerFormRef.value.validate(async (valid) => {
+    if (!valid) {
+      ElMessage.error('请检查表单输入项');
+      return;
     }
-    console.error('注册时发生错误:', error); 
-  }
+
+    // 3.2 验证通过，执行注册
+    loading.value = true;
+    try {
+      // 调用后端 /user/register 接口
+      const response = await apiClient.post('/user/register', {
+        phone: registerForm.phone,
+        username: registerForm.username,
+        password: registerForm.password
+        // 后端不需要 confirmPassword
+      });
+      
+      ElMessage.success('注册成功！即将跳转到登录页面...');
+      
+      // 注册成功后，自动跳转到登录页
+      setTimeout(() => {
+        router.push('/login');
+      }, 1500); 
+      
+    } catch (error) {
+      if (error.response) {
+        // 显示后端返回的错误，例如 "手机号已被注册"
+        ElMessage.error(error.response.data.msg);
+      } else {
+        ElMessage.error('注册失败，请检查网络');
+      }
+    } finally {
+      loading.value = false;
+    }
+  });
 }
 </script>
 
 <style scoped>
-/* 我们可以复用 LoginView 的样式 */
-.register-container {
-  max-width: 300px;
+/* 旧的样式已不再需要，风格与登录页保持一致 */
+.register-card {
+  max-width: 450px;
   margin: 50px auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  text-align: center;
-}
-.form-group {
-  margin-bottom: 15px;
-  text-align: left;
-}
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-}
-.form-group input {
-  width: 100%;
-  padding: 8px;
-  box-sizing: border-box; 
-}
-button {
-  width: 100%;
-  padding: 10px;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.message {
-  margin-top: 15px;
-  /* 根据消息类型改变颜色会更好，但暂时先用红色 */
-  color: red; 
-}
-/* 如果注册成功，消息显示为绿色 */
-.message:not(error) {
-    color: green;
 }
 </style>
