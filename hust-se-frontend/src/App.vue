@@ -1,19 +1,33 @@
 <template>
-  <Login />
+  <div id="layout">
+    <nav>
+      <router-link to="/">首页</router-link> | 
+      <router-link to="/login">登录</router-link> |
+      <router-link to="/register">注册</router-link> |
+      <router-link to="/create-book">发布书籍</router-link> |
+      <router-link to="/orders">我的订单</router-link> |
+
+      <router-link to="/profile">个人资料</router-link>
+      </nav>
+    
+    <main>
+      <router-view />
+    </main>
+    
+  </div>
 </template>
 
 <script setup>
-// 1. 从我们刚创建的文件中，导入 Login 组件
-import Login from './components/Login.vue';
-
-// 2. (App.vue 会自动注册这个组件，我们什么都不用做)
 </script>
 
 <style>
-/* 我们可以保留或删除默认样式，先保留基础样式 */
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* 全局样式  */
+nav {
+  padding: 20px;
+  text-align: center;
+  background-color: #f4f4f4;
+}
+main {
+  padding: 20px;
 }
 </style>

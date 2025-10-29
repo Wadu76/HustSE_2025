@@ -4,8 +4,8 @@ import axios from 'axios';
 
 //1. 创建一个新的 axios 实例
 const apiClient = axios.create({
-    //后端API“厨房”的地址
-    baseURL: 'http://127.0.0.1:5000',
+
+    baseURL: 'http://localhost:5000',
 
     // ！！！！！！【最重要】！！！！！！
     // 允许跨域请求携带 Cookie (Session ID)
