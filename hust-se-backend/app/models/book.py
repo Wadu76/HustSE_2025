@@ -37,5 +37,7 @@ class Book(db.Model):
             'images': self.images, #将图片URL字符串转换为列表, 新增
             'status': self.status,
             'status_text': status_map.get(self.status, '未知'),  # 显示中文状态
-            'create_time': self.create_time.strftime('%Y-%m-%d %H:%M:%S')  # 格式化时间
+            'create_time': self.create_time.strftime('%Y-%m-%d %H:%M:%S'),  # 格式化时间
+            'seller_name': self.seller.username if self.seller else '未知卖家',
+            'seller_credit': self.seller.credit if self.seller else 'N/A'
         }

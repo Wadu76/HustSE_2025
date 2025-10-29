@@ -1,61 +1,93 @@
 <template>
   <div class="detail-container">
-    <div v-if="loading" class="loading">加载中...</div>
-    <div v-if="error" class="error">{{ error }}</div>
+    <div v-if="loading" v-loading.fullscreen.lock="loading"></div>
+    <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
 
-    <div v-if="book" class="book-detail">
+    <el-row v-if="book" :gutter="30">
       
-      <div class="book-image-wrapper">
-        <img v-if="book.images" :src="getImageUrl(book.images)" :alt="book.title" class="book-image" />
-        <div v-else class="book-image-placeholder">无图片</div>
-      </div>
+      <el-col :span="10">
+        <el-image :src="getImageUrl(book.images)" class="book-image" fit="cover">
+          <template #placeholder>
+            <div class="image-placeholder">加载中...</div>
+          </template>
+          <template #error>
+            <div class="image-placeholder">无图片</div>
+          </template>
+        </el-image>
+      </el-col>
 
-      <div class="book-info">
+      <el-col :span="14">
         <h1>{{ book.title }}</h1>
-        <p class="price">¥ {{ book.price }}</p>
-        <p><strong>作者:</strong> {{ book.author || '未知' }}</p>
-        <p><strong>新旧程度:</strong> {{ book.condition }}</p>
-        <p><strong>课程标签:</strong> {{ book.course_tag }}</p>
-        <p><strong>卖家ID:</strong> {{ book.seller_id }}</p>
-        <p><strong>描述:</strong> {{ book.description || '暂无描述' }}</p>
+        <p class="description">{{ book.description || '暂无描述' }}</p>
+
+        <el-descriptions :column="2" border class="book-info">
+          
+          <el-descriptions-item label="价格">
+            <span class="price">¥ {{ book.price }}</span>
+          </el-descriptions-item>
+
+          <el-descriptions-item label="作者">
+            {{ book.author || '未知' }}
+          </el-descriptions-item>
+
+          <el-descriptions-item label="新旧程度">
+            <el-tag size="small">{{ book.condition }}</el-tag>
+          </el-descriptions-item>
+          
+          <el-descriptions-item label="课程标签">
+            <el-tag size="small">{{ book.course_tag }}</el-tag>
+          </el-descriptions-item>
+
+          <el-descriptions-item label="卖家">
+            {{ book.seller_name }}
+          </el-descriptions-item>
+          <el-descriptions-item label="卖家信用">
+            <el-tag :type="getCreditTagType(book.seller_credit)" effect="dark">
+              {{ book.seller_credit }}
+            </el-tag>
+          </el-descriptions-item>
+          </el-descriptions>
         
-        <button 
+        <el-button 
+          type="primary"
+          size="large"
           @click="handleBuyNow" 
           :disabled="book.status !== 1"
           class="buy-button"
         >
+          <el-icon><ShoppingIcon /></el-icon>
           {{ book.status === 1 ? '立即购买' : '已售出' }}
-        </button>
-      </div>
-    </div>
+        </el-button>
+        
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-// 【新增】导入 useRouter (用于跳转) 和 useUserStore (用于获取登录状态)
 import { useRoute, useRouter } from 'vue-router';
-import { useUserStore } from '../stores/userStore'; //
-import apiClient from '../api/api.js'; //
+import { useUserStore } from '../stores/userStore';
+import apiClient from '../api/api.js';
+// 【UI 升级】导入 ElMessage 和 ElMessageBox
+import { ElMessage, ElMessageBox } from 'element-plus'; 
+// 【UI 升级】导入图标
+import { ShoppingCartFull as ShoppingIcon } from '@element-plus/icons-vue';
 
-// 我们需要后端地址来拼接图片 URL
-// (您的 apiClient 已配置 baseURL，所以我们可以用它)
-const BACKEND_URL = apiClient.defaults.baseURL; // 'http://localhost:5000'
+const BACKEND_URL = apiClient.defaults.baseURL;
 
-// --- 响应式变量 ---
 const book = ref(null);
-const loading = ref(false);
+const loading = ref(true); // 默认设为 true
 const error = ref(null);
 const route = useRoute();
-const router = useRouter(); // 【新增】
-const userStore = useUserStore(); // 【新增】
+const router = useRouter();
+const userStore = useUserStore();
 
-// 3. 定义获取单本书籍的函数 (不变)
+// (fetchBookDetail 函数不变)
 async function fetchBookDetail() {
   loading.value = true;
   error.value = null;
   const bookId = route.params.id; 
-  
   try {
     const response = await apiClient.get(`/book/${bookId}`);
     book.value = response.data.data;
@@ -71,130 +103,124 @@ async function fetchBookDetail() {
   }
 }
 
-// 帮助函数：拼接图片 URL (不变)
+// (getImageUrl 函数不变)
 function getImageUrl(imagePath) {
   if (!imagePath) return '';
   return `${BACKEND_URL}${imagePath}`;
 }
 
-// 6. 页面加载时 (onMounted)，执行获取函数 (不变)
 onMounted(() => {
   fetchBookDetail();
 });
 
-// --- 【以下为新增的核心逻辑】 ---
-// “立即购买”按钮的点击事件
+// 【UI 升级】handleBuyNow 函数修改为使用 Element Plus
 const handleBuyNow = async () => {
-  
-  // 1. 检查是否登录 (从 Pinia Store 获取)
   if (!userStore.user) {
-    alert('请先登录后再购买！');
-    router.push('/login'); // 跳转到登录页
+    ElMessage.warning('请先登录后再购买！');
+    router.push('/login');
     return;
   }
 
-  // 2. 检查是否在购买自己的书
   if (userStore.user.id === book.value.seller_id) {
-    alert('不能购买自己发布的书籍！');
+    ElMessage.error('不能购买自己发布的书籍！');
     return;
   }
   
-  // 3. 确认购买
-  if (!confirm(`您确定要以 ¥${book.value.price} 的价格购买《${book.value.title}》吗？`)) {
+  // 【UI 升级】使用 ElMessageBox 确认
+  try {
+    await ElMessageBox.confirm(
+      `您确定要以 ¥${book.value.price} 的价格购买《${book.value.title}》吗？`,
+      '订单确认',
+      {
+        confirmButtonText: '确定购买',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+  } catch (cancel) {
+    // 用户点击了“取消”
+    ElMessage.info('订单已取消');
     return;
   }
 
-  // 4. [核心] 调用创建订单 API
+  // (调用 API 部分不变)
   try {
     const response = await apiClient.post('/order/create', {
-      book_id: book.value.id // 传递 book_id 给后端
+      book_id: book.value.id
     });
 
     if (response.data.code === 200) {
-      alert('订单创建成功！');
-      
-      // 5. 购买成功后，立即更新前端 UI
-      book.value.status = 0; // 0 代表已售出 (与 book.py 对应)
-      
-      // 稍后开发完订单列表页后，可以跳转过去
-      // router.push('/my-orders'); 
+      ElMessage.success('订单创建成功！'); // UI 升级
+      book.value.status = 0; 
     } else {
-      // 显示后端返回的错误，例如 "书籍不存在或已售出"
-      alert(`购买失败: ${response.data.msg}`);
+      ElMessage.error(`购买失败: ${response.data.msg}`); // UI 升级
     }
   } catch (error) {
     console.error('创建订单失败:', error);
     if (error.response && error.response.data.msg) {
-        alert(`创建订单时出错: ${error.response.data.msg}`);
+        ElMessage.error(`创建订单时出错: ${error.response.data.msg}`);
     } else {
-        alert('创建订单时发生网络错误');
+        ElMessage.error('创建订单时发生网络错误');
     }
   }
 };
+
+// --- 【新增功能】辅助函数：根据信用分返回标签类型 ---
+function getCreditTagType(credit) {
+  if (credit >= 100) return 'success'; // 优秀
+  if (credit >= 80) return 'warning'; // 良好
+  if (credit < 80) return 'danger';  // 较差
+  return 'info'; // 默认
+}
 </script>
 
 <style scoped>
-/* 您的 <style> 样式保持不变 */
-/* ... (复制自您的 BookDetailView.vue) ... */
+/* 【UI 升级】使用新的样式
+  (这对应您上次上传的 style 文件)
+*/
 .detail-container {
-  max-width: 900px;
-  margin: 20px auto;
-}
-.book-detail {
-  display: flex; 
-  gap: 30px; 
-}
-.book-image-wrapper {
-  flex: 1; 
+  max-width: 1000px;
+  margin: 0 auto;
 }
 .book-image {
   width: 100%;
+  height: 450px;
   border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
-.book-image-placeholder {
-  width: 100%;
-  height: 400px; 
+.image-placeholder {
   display: flex;
-  align-items: center;
   justify-content: center;
-  background-color: #f0f0f0;
-  color: #999;
-  border-radius: 8px;
+  align-items: center;
+  width: 100%;
+  height: 450px;
+  background-color: #f5f7fa;
+  color: #c0c4cc;
+}
+h1 {
+  font-size: 2em;
+  margin-top: 0;
+}
+.description {
+  font-size: 1em;
+  color: #606266;
+  margin-bottom: 20px;
 }
 .book-info {
-  flex: 2; 
+  margin-bottom: 20px;
 }
+/* el-descriptions-item 里的价格 */
 .price {
-  font-size: 2em;
-  color: #e44d26; 
+  font-size: 1.5em;
+  color: #e44d26;
   font-weight: bold;
-  margin: 10px 0;
 }
 .buy-button {
-  padding: 12px 20px;
-  font-size: 1.1em;
-  background-color: #42b983; 
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
+  width: 100%;
   margin-top: 20px;
-  transition: background-color 0.2s;
 }
-.buy-button:hover {
-  background-color: #36a476; 
-}
-/* 【新增】禁用按钮的样式 */
-.buy-button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-.loading, .error {
-  font-size: 1.2em;
-  color: #888;
-}
-.error {
-  color: red;
+/* el-button 里的图标 */
+.el-icon {
+  margin-right: 8px;
 }
 </style>
