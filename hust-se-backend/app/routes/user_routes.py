@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.models import User
+from app.models.user import User
 from app import db
 #from app.utils.auth import generate_token #导入jwt生成工具
 from app.utils.auth import set_login_session
