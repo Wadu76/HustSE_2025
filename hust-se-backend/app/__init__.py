@@ -10,6 +10,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 def create_app(config_class=Config):
     app = Flask(__name__)   #Flask实例
+    CORS(app, origins=["http://localhost:5173"], supports_credentials=True)
 
     #加载config
     app.config.from_object(config_class)

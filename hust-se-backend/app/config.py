@@ -1,16 +1,15 @@
-#本脚本统一管理项目的配置信息
 import os
-from dotenv import load_dotenv #加载.env文件中的配置信息
 
-load_dotenv()  #加载.env文件中的配置信息以让python读到数据库uri
+basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
-    #从env获取数据库地址
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URI')
+    # 1. 【新增】你必须设置一个秘钥！
+    #    Flask session 依赖这个秘钥来加密 cookie。
+    #    请把它改成一个别人猜不到的随机字符串。
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'a-very-hard-to-guess-secret-key-12345'
 
-    #查询得知开发阶段不需要SQLAlchemy跟踪修改功能，避免额外内存消耗
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-    #设置密钥，用于session加密
-    SECRET_KEY = 'test123' #示例字符串
+    # ... 你已有的 SQLALCHEMY_DATABASE_URI ...
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+        'sqlite:///' + os.path.join(basedir, 'app.db')
     
+    UPLOAD_FOLDER = os.path.join(basedir, 'static/uploads')
