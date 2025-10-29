@@ -74,6 +74,8 @@ def create_book(current_user):
 #2. 多条件检索书籍 （公开的接口）
 @book_bp.route('/list', methods=['GET'])
 def get_books():
+
+    search = request.args.get('search')#为了搜索栏，获取搜索词
     #获取查询参数（包括课程 专业 年纪筛选以及加个排序）
     course_tag = request.args.get('course_tag')
     major_tag = request.args.get('major_tag')
@@ -85,8 +87,12 @@ def get_books():
     
     #构建查询条件
     query = Book.query.filter_by(status=1)  #只查询在售书籍，卖出的就不包含
-
+    if search:
+        #使用 .like() 和 % 通配符来实现模糊查询
+        query = query.filter(Book.title.like(f"%{search}%"))
+    
     #条件筛选
+
     if course_tag:
         query = query.filter(Book.course_tag == course_tag)
     if major_tag:
