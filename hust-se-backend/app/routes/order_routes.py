@@ -165,7 +165,8 @@ def update_order_status(current_user, order_id):
         seller = User.query.get(order.seller_id)
         
         if seller: #确保卖家存在
-            if new_status == 3:
+            if new_status == 2:
+                #状态 2: 已支付 (等待发货) -> 扣减卖家30信用分
                 #状态 3: 已发货 (等待交付) -> 扣减卖家30信用分
                 seller.credit -= 30
             elif new_status == 4:
