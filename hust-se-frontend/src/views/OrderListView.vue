@@ -1,156 +1,174 @@
 <template>
   <div class="order-list-container">
-    <h2>我的订单</h2>
 
-    <div v-if="!userStore.user">
-      <p>请先 <router-link to="/login">登录</router-link> 查看您的订单。</p>
-    </div>
+    <el-radio-group v-model="currentRole" @change="fetchOrders" style="margin-bottom: 20px;">
+      <el-radio-button label="buyer">我买的</el-radio-button>
+      <el-radio-button label="seller">我卖的</el-radio-button>
+    </el-radio-group>
 
-    <div v-else>
-      <div class="filter-buttons">
-        <button @click="fetchOrders('buyer')" :class="{ active: currentRole === 'buyer' }">
-          我买的 (Buyer)
-        </button>
-        <button @click="fetchOrders('seller')" :class="{ active: currentRole === 'seller' }">
-          我卖的 (Seller)
-        </button>
-      </div>
+    <el-alert v-if="!userStore.user" title="请先登录查看您的订单" type="warning" show-icon :closable="false">
+      <router-link to="/login">
+        <el-button type="primary" plain size="small">去登录</el-button>
+      </router-link>
+    </el-alert>
 
-      <div v-if="loading" class="loading">加载中...</div>
-      <div v-else-if="error" class="error">{{ error }}</div>
-      
-      <div v-else-if="orders.length === 0" class="empty">
-        暂无订单。
-      </div>
+    <el-table 
+      v-else 
+      :data="orders" 
+      v-loading="loading" 
+      style="width: 100%"
+      empty-text="暂无订单"
+    >
+      <el-table-column prop="order_no" label="订单号" width="180" />
+      <el-table-column prop="book_title" label="书籍" />
 
-      <div v-else class="order-list">
-        <div v-for="order in orders" :key="order.id" class="order-card">
-          <h3>订单号: {{ order.order_no }}</h3>
-          <p><strong>书籍:</strong> {{ order.book_title }}</p>
-          <p><strong>价格:</strong> ¥ {{ order.price }}</p>
-          <p><strong>状态:</strong> <span class="status">{{ order.status_text }}</span></p>
-          <p v-if="currentRole === 'buyer'">
-            <strong>卖家:</strong> {{ order.seller_name }}
-          </p>
-          <p v-if="currentRole === 'seller'">
-            <strong>买家:</strong> {{ order.buyer_name }}
-          </p>
-          <p class="time">创建时间: {{ order.create_time }}</p>
-        </div>
-      </div>
-    </div>
+      <el-table-column v-if="currentRole === 'buyer'" prop="seller_name" label="卖家" />
+      <el-table-column v-if="currentRole === 'seller'" prop="buyer_name" label="买家" />
+
+      <el-table-column prop="price" label="价格">
+        <template #default="scope">
+          ¥ {{ scope.row.price.toFixed(2) }}
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="status_text" label="订单状态" width="100">
+        <template #default="scope">
+          <el-tag :type="getStatusTagType(scope.row.status)">
+            {{ scope.row.status_text }}
+          </el-tag>
+        </template>
+      </el-table-column>
+
+      <el-table-column prop="create_time" label="创建时间" width="160" />
+
+      <el-table-column label="操作" width="150" fixed="right">
+        <template #default="scope">
+          <div v-if="currentRole === 'buyer'">
+            <el-button
+              v-if="scope.row.status === 1"
+              type="primary"
+              size="small"
+              @click="handleUpdateStatus(scope.row.id, 2, '支付')"
+            >
+              去支付
+            </el-button>
+
+            <el-button
+              v-if="scope.row.status === 3"
+              type="success"
+              size="small"
+              @click="handleUpdateStatus(scope.row.id, 4, '确认收货')"
+            >
+              确认收货
+            </el-button>
+          </div>
+
+          <span v-if="currentRole === 'seller' && (scope.row.status === 1 || scope.row.status === 3)">
+            等待买家操作
+          </span>
+
+          <el-button
+            v-if="currentRole === 'seller' && scope.row.status === 2"
+            type="primary"
+            size="small"
+            @click="handleUpdateStatus(scope.row.id, 3, '发货')"
+          >
+            发货
+          </el-button>
+
+        </template>
+      </el-table-column>
+    </el-table>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
 import apiClient from '../api/api.js';
-import { useUserStore } from '../stores/userStore'; // 1. 导入用户 store
+import { useUserStore } from '../stores/userStore';
+import { ElMessage, ElMessageBox } from 'element-plus'; // 导入提示框
 
 const orders = ref([]);
 const loading = ref(false);
-const error = ref(null);
-const currentRole = ref('buyer'); // 默认显示“我买的”
-const userStore = useUserStore(); // 2. 获取 store 实例
+const currentRole = ref('buyer');
+const userStore = useUserStore();
 
-// 3. 定义获取订单的函数
-async function fetchOrders(role = 'buyer') {
-  // 检查是否登录
-  if (!userStore.user) {
-    error.value = '请先登录。';
-    return;
-  }
-
+// 1. 获取订单 (不变，但 @change 会自动传入新 role)
+async function fetchOrders(role = currentRole.value) {
+  if (!userStore.user) return;
   loading.value = true;
-  error.value = null;
-  currentRole.value = role; // 更新当前角色
-
   try {
-    // 4. 调用后端的 /order/list 接口，并传入 role 参数
     const response = await apiClient.get('/order/list', {
-      params: {
-        role: role // 'buyer' 或 'seller'
-      }
+      params: { role: role }
     });
-    
-    // 5. 将返回的订单数据存入 ref
     if (response.data.code === 200) {
       orders.value = response.data.data.orders;
     } else {
-      error.value = response.data.msg;
+      ElMessage.error(response.data.msg);
     }
   } catch (err) {
-    console.error(`获取订单列表 (role=${role}) 失败:`, err);
-    if (err.response && err.response.status === 401) {
-      error.value = '请先登录后再查看订单。';
-    } else {
-      error.value = '无法加载订单列表，请稍后再试。';
-    }
+    ElMessage.error('无法加载订单列表');
   } finally {
     loading.value = false;
   }
 }
 
-// 6. 页面加载时 (onMounted)，默认获取买家订单
 onMounted(() => {
-  fetchOrders('buyer');
+  fetchOrders();
 });
+
+// 2. 【新增】处理订单状态更新的函数
+async function handleUpdateStatus(orderId, newStatus, actionName) {
+  // 2.1 弹出确认框
+  try {
+    await ElMessageBox.confirm(
+      `您确定要"${actionName}"吗？`,
+      '操作确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+  } catch (cancel) {
+    return ElMessage.info('操作已取消');
+  }
+
+  // 2.2 调用后端 API (即 order_routes.py 中的 update_order_status)
+  try {
+    const response = await apiClient.post(`/order/${orderId}/update`, {
+      status: newStatus
+    });
+
+    if (response.data.code === 200) {
+      ElMessage.success(`操作成功：${actionName}`);
+      // 2.3 【重要】更新成功后，刷新订单列表
+      fetchOrders(currentRole.value);
+    } else {
+      ElMessage.error(`操作失败: ${response.data.msg}`);
+    }
+  } catch (err) {
+    ElMessage.error('请求失败，请检查网络');
+  }
+}
+
+// 3. 【新增】辅助函数，用于 el-tag 颜色
+function getStatusTagType(status) {
+  switch (status) {
+    case 1: return 'warning'; // 待支付
+    case 2: return 'info';    // 已支付
+    case 3: return 'primary'; // 已发货
+    case 4: return 'success'; // 已收货
+    case 5: return 'success'; // 已完成
+    default: return 'danger';
+  }
+}
 </script>
 
 <style scoped>
+/* 样式已由 Element Plus 处理，保持简洁 */
 .order-list-container {
-  max-width: 800px;
+  max-width: 100%;
   margin: 20px auto;
-}
-
-.filter-buttons {
-  margin-bottom: 20px;
-}
-.filter-buttons button {
-  padding: 8px 15px;
-  margin-right: 10px;
-  border: 1px solid #ccc;
-  background-color: #f0f0f0;
-  cursor: pointer;
-}
-.filter-buttons button.active {
-  background-color: #42b983;
-  color: white;
-  border-color: #42b983;
-}
-
-.order-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.order-card {
-  border: 1px solid #eee;
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-.order-card h3 {
-  margin-top: 0;
-  font-size: 1.1em;
-}
-.status {
-  font-weight: bold;
-  color: #e44d26;
-}
-.time {
-  font-size: 0.9em;
-  color: #888;
-}
-
-.loading, .error, .empty {
-  font-size: 1.1em;
-  color: #888;
-  text-align: center;
-  padding: 20px;
-}
-.error {
-  color: red;
 }
 </style>
