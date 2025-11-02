@@ -36,7 +36,8 @@ class User(db.Model):
         return {
             'id': self.id, 
             'phone': self.phone,
-            'username': self.identity,
+            'username': self.username,
+            'identity': self.identity,
             'major': self.major,
             'grade': self.grade,
             'credit': self.credit,
