@@ -4,6 +4,7 @@ from app.utils.auth import login_required
 from app import db
 from werkzeug.utils import secure_filename # 导入安全文件名工具
 import os
+from datetime import datetime
 #书籍相关蓝图
 book_bp = Blueprint('book', __name__, url_prefix='/book')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -16,60 +17,78 @@ def allowed_file(filename):
 @book_bp.route('/create', methods=['POST'])
 @login_required 
 def create_book(current_user): 
-    # 1. 不再使用 request.get_json()
-    #    因为文件上传时，数据在 request.form (文本) 和 request.files (文件) 中
     
-    # 2. 从 request.form 获取文本数据
-    title = request.form.get('title')
-    course_tag = request.form.get('course_tag')
-    condition = request.form.get('condition')
-    price = request.form.get('price')
-
-    # 3. 校验必填的 *文本* 字段
-    if not all([title, course_tag, condition, price]):
-        return jsonify({'code': 400, 'msg': '缺少必要的文本参数(title, course_tag, condition, price)'}), 400
-
-    # 4. 处理文件上传
-    image_file = request.files.get('image') # 'image' 是前端 input<type=file> 的 name
-    image_url = '' # 默认图片 URL 为空
-
-    if image_file and allowed_file(image_file.filename):
-        # 5. 生成安全的文件名，防止黑客攻击
-        filename = secure_filename(image_file.filename)
-        
-        # 6. 生成文件的保存路径
-        #    current_app.config['UPLOAD_FOLDER'] 会读取 config.py 中的设置
-        save_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-        
-        # 7. 保存文件到服务器
-        image_file.save(save_path)
-        
-        # 8. 【关键】生成用于 *访问* 文件的 URL
-        #    我们只在数据库中存储相对路径 (URL)，而不是 C:\... 这样的绝对路径
-        image_url = f"/static/uploads/{filename}"
-
-    # 9. 创建书籍记录
-    new_book = Book(
-        title=title,
-        author=request.form.get('author', ''), # 获取可选字段
-        course_tag=course_tag,
-        condition=condition,
-        price=price,
-        description=request.form.get('description', ''),
-        images=image_url,  # 【修改】存入我们生成的 image_url
-        seller_id=current_user.id
-    )
-    
-    db.session.add(new_book)
+    # --- 【修改】我们将所有逻辑放入一个 try/except 块中 ---
     try:
+        # 1. 获取文本数据
+        title = request.form.get('title')
+        course_tag = request.form.get('course_tag')
+        condition = request.form.get('condition')
+        price = request.form.get('price')
+
+        if not all([title, course_tag, condition, price]):
+            return jsonify({'code': 400, 'msg': '缺少必要的文本参数(title, course_tag, condition, price)'}), 400
+
+        # 2. 获取文件数据
+        image_file = request.files.get('image')
+        image_url = '' # 默认值
+
+        # 3. 处理文件（如果用户上传了）
+        if image_file and allowed_file(image_file.filename):
+            
+            # 3.1 获取扩展名
+            original_filename = secure_filename(image_file.filename)
+            _, extension = os.path.splitext(original_filename)
+            
+            # 3.2 (保留) 使用时间戳生成唯一文件名
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+            unique_filename = f"{timestamp}{extension}"
+
+            # 3.3 获取保存目录
+            upload_folder = current_app.config['UPLOAD_FOLDER']
+            
+            # 3.4 【新增】确保目录存在 (关键修复!)
+            #     os.makedirs 会创建所有不存在的中间目录
+            #     exist_ok=True 使得如果目录已存在，也不会报错
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            # 3.5 创建完整保存路径
+            save_path = os.path.join(upload_folder, unique_filename)
+            
+            # 3.6 保存文件
+            image_file.save(save_path)
+            
+            # 3.7 设置数据库URL
+            image_url = f"/static/uploads/{unique_filename}"
+
+        # 4. 创建书籍对象
+        new_book = Book(
+            title=title,
+            author=request.form.get('author', ''), 
+            course_tag=course_tag,
+            condition=condition,
+            price=price,
+            description=request.form.get('description', ''),
+            images=image_url,  # 存入 '' 或 唯一URL
+            seller_id=current_user.id,
+            status=1 # 【重要】确保新书的状态是 1 (在售)
+        )
+        
+        # 5. 提交数据库
+        db.session.add(new_book)
         db.session.commit()
+        
         return jsonify({
             'code': 200,
             'msg': '书籍发布成功',
-            'data': new_book.to_dict() # to_dict() 也会返回新的 image_url
+            'data': new_book.to_dict()
         }), 200
+        
     except Exception as e:
+        # 6. 如果上述任何步骤失败（包括文件保存），回滚数据库
         db.session.rollback()
+        # 记录错误，方便调试
+        current_app.logger.error(f'发布书籍失败: {str(e)}') 
         return jsonify({'code': 500, 'msg': f'发布失败:{str(e)}'}), 500
 #2. 多条件检索书籍 （公开的接口）
 @book_bp.route('/list', methods=['GET'])
